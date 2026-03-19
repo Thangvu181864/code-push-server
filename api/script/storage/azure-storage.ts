@@ -875,14 +875,18 @@ export class AzureStorage implements storage.Storage {
 
       if (endpointSuffix) {
         const storageAccountConnectionString = `DefaultEndpointsProtocol=https;AccountName=${_accountName};AccountKey=${_accountKey};BlobEndpoint=https://${endpointSuffix}/blob/${_accountName};QueueEndpoint=https://${endpointSuffix}/queue/${_accountName};TableEndpoint=https://${endpointSuffix}/table/${_accountName}`;
-        tableServiceClient = new TableServiceClient(storageAccountConnectionString, tableStorageCredential, {
+        tableServiceClient = TableServiceClient.fromConnectionString(storageAccountConnectionString, {
+          allowInsecureConnection: true,
           retryOptions: {
             maxRetries: 3,
             maxRetryDelayInMs: 2000,
             retryDelayInMs: 500,
           },
         });
-        blobServiceClient = new BlobServiceClient(storageAccountConnectionString, blobStorageCredential, {
+        tableClient = TableClient.fromConnectionString(storageAccountConnectionString, AzureStorage.TABLE_NAME, {
+          allowInsecureConnection: true,
+        });
+        blobServiceClient = BlobServiceClient.fromConnectionString(storageAccountConnectionString, {
           retryOptions: {
             maxTries: 4,
             maxRetryDelayInMs: 2000,
