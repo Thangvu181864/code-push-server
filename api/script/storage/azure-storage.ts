@@ -863,8 +863,9 @@ export class AzureStorage implements storage.Storage {
       blobServiceClient = BlobServiceClient.fromConnectionString(devConnectionString);
     } else {
       const storageAccountConnectionString = process.env.AZURE_ACCOUNT_CONNECTION_STRING;
-      const _accountName = accountName ?? process.env.AZURE_STORAGE_ACCOUNT;
-      const _accountKey = accountKey ?? process.env.AZURE_STORAGE_ACCESS_KEY;
+      const credentials = this.parseAccountConnectionString(storageAccountConnectionString);
+      const _accountName = credentials?.AccountName ?? accountName ?? process.env.AZURE_STORAGE_ACCOUNT;
+      const _accountKey = credentials?.AccountKey ?? accountKey ?? process.env.AZURE_STORAGE_ACCESS_KEY;
 
       if (!(_accountName && _accountKey) && !storageAccountConnectionString) {
         throw new Error("Azure credentials not set. Please provide either (Account Name & Key) or a Connection String.");
@@ -1330,6 +1331,15 @@ export class AzureStorage implements storage.Storage {
     const lastLabel: string = packageHistory[packageHistory.length - 1].label;
     const lastVersion: number = parseInt(lastLabel.substring(1)); // Trim 'v' from the front
     return "v" + (lastVersion + 1);
+  }
+
+  private parseAccountConnectionString(connectionString: string): Record<string, any> {
+    if (!connectionString) return {};
+    return connectionString.split(";").reduce((acc, pair) => {
+      const [key, ...value] = pair.split("=");
+      if (key) acc[key] = value.join("=");
+      return acc;
+    }, {});
   }
 
   private static azureErrorHandler(
