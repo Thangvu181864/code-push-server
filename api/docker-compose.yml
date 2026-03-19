@@ -5,14 +5,25 @@ services:
     container_name: azurite
     hostname: azurite
     restart: always
-    ports:
-      - "10000:10000" # Blob service
-      - "10001:10001" # Queue service
-      - "10002:10002" # Table service
+#    ports:
+#      - "10000:10000" # Blob service
+#      - "10001:10001" # Queue service
+#      - "10002:10002" # Table service
     volumes:
       - ./docker/data:/data
     # Run azurite and allow outside access
     command: "azurite --blobHost 0.0.0.0 --queueHost 0.0.0.0 --tableHost 0.0.0.0 --location /data"
+  # Redis (for caching)
+  redis:
+    image: redis:latest
+    container_name: redis
+#    ports:
+#      - "6379:6379"
+    environment:
+      - ALLOW_EMPTY_PASSWORD=yes
+    volumes:
+      - redis-data:/data
+  # CodePush Server
   code-push-server:
     build: .
     container_name: code-push-server
@@ -22,3 +33,6 @@ services:
       - .env
     depends_on:
       - azurite
+
+volumes:
+  redis-data:
