@@ -14,6 +14,7 @@ To emulate Azure Blob Storage locally. Azurite needs to be installed and running
 - `EMULATED`: Set to 'true' in order to use the local emulator instead of a hosted instance
 
 #### Azure
+- `AZURE_STORAGE_ENDPOINT_SUFFIX`: The endpoint suffix for your Azure storage instance (e.g.: core.windows.net)
 - `AZURE_STORAGE_ACCOUNT`: The name of your hosted Azure storage instance
 - `AZURE_STORAGE_ACCESS_KEY`: The key to your Azure storage instance (if KeyVault credentials are not provided)
 

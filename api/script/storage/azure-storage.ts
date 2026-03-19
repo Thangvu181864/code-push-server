@@ -866,30 +866,44 @@ export class AzureStorage implements storage.Storage {
         throw new Error("Azure credentials not set");
       }
 
+      const endpointSuffix = process.env.AZURE_STORAGE_ENDPOINT_SUFFIX;
       const _accountName = accountName ?? process.env.AZURE_STORAGE_ACCOUNT;
       const _accountKey = accountKey ?? process.env.AZURE_STORAGE_ACCESS_KEY;
 
       const tableStorageCredential = new AzureNamedKeyCredential(_accountName, _accountKey);
       const blobStorageCredential = new StorageSharedKeyCredential(_accountName, _accountKey);
 
-      const tableServiceUrl = `https://${_accountName}.table.core.windows.net`;
-      const blobServiceUrl = `https://${_accountName}.blob.core.windows.net`;
 
-      tableServiceClient = new TableServiceClient(tableServiceUrl, tableStorageCredential, {
-        retryOptions: {
-          maxRetries: 3,
-          maxRetryDelayInMs: 2000,
-          retryDelayInMs: 500,
-        },
-      });
-      tableClient = new TableClient(tableServiceUrl, AzureStorage.TABLE_NAME, tableStorageCredential);
-      blobServiceClient = new BlobServiceClient(blobServiceUrl, blobStorageCredential, {
-        retryOptions: {
-          maxTries: 4,
-          maxRetryDelayInMs: 2000,
-          retryDelayInMs: 500,
-        },
-      });
+
+      if (endpointSuffix) {
+        const storageAccountConnectionString = `DefaultEndpointsProtocol=https;AccountName=${_accountName};AccountKey=${_accountKey};BlobEndpoint=https://${endpointSuffix}/blob/${_accountName};QueueEndpoint=https://${endpointSuffix}/queue/${_accountName};TableEndpoint=https://${endpointSuffix}/table/${_accountName}`;
+        tableServiceClient = new TableServiceClient(storageAccountConnectionString, tableStorageCredential, {
+          retryOptions: {
+            maxRetries: 3,
+            maxRetryDelayInMs: 2000,
+            retryDelayInMs: 500,
+          },
+        });
+      } else {
+        const tableServiceUrl = `https://${_accountName}.table.core.windows.net`;
+        const blobServiceUrl = `https://${_accountName}.blob.core.windows.net`;
+
+        tableServiceClient = new TableServiceClient(tableServiceUrl, tableStorageCredential, {
+          retryOptions: {
+            maxRetries: 3,
+            maxRetryDelayInMs: 2000,
+            retryDelayInMs: 500,
+          },
+        });
+        tableClient = new TableClient(tableServiceUrl, AzureStorage.TABLE_NAME, tableStorageCredential);
+        blobServiceClient = new BlobServiceClient(blobServiceUrl, blobStorageCredential, {
+          retryOptions: {
+            maxTries: 4,
+            maxRetryDelayInMs: 2000,
+            retryDelayInMs: 500,
+          },
+        });
+      }
     }
 
     const tableHealthEntity: any = this.wrap({ health: "health" }, /*partitionKey=*/ "health", /*rowKey=*/ "health");

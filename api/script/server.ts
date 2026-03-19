@@ -19,6 +19,7 @@ defaultServer.start(function (err: Error, app: express.Express) {
   let server: any;
 
   if (httpsEnabled) {
+    console.log(`HTTPS enabled - using certs/cert.key and certs/cert.crt for SSL configuration. Make sure to provide valid certificates to avoid security warnings in the browser.`);
     const options = {
       key: fs.readFileSync("./certs/cert.key", "utf8"),
       cert: fs.readFileSync("./certs/cert.crt", "utf8"),
@@ -34,4 +35,4 @@ defaultServer.start(function (err: Error, app: express.Express) {
   }
 
   server.setTimeout(0);
-});
+},true);
