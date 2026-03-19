@@ -862,19 +862,18 @@ export class AzureStorage implements storage.Storage {
       tableClient = TableClient.fromConnectionString(devConnectionString, AzureStorage.TABLE_NAME);
       blobServiceClient = BlobServiceClient.fromConnectionString(devConnectionString);
     } else {
-      if ((!accountName && !process.env.AZURE_STORAGE_ACCOUNT) || (!accountKey && !process.env.AZURE_STORAGE_ACCESS_KEY)) {
-        throw new Error("Azure credentials not set");
-      }
-
-      const endpointSuffix = process.env.AZURE_STORAGE_ENDPOINT_SUFFIX;
+      const storageAccountConnectionString = process.env.AZURE_ACCOUNT_CONNECTION_STRING;
       const _accountName = accountName ?? process.env.AZURE_STORAGE_ACCOUNT;
       const _accountKey = accountKey ?? process.env.AZURE_STORAGE_ACCESS_KEY;
+
+      if (!(_accountName && _accountKey) && !storageAccountConnectionString) {
+        throw new Error("Azure credentials not set. Please provide either (Account Name & Key) or a Connection String.");
+      }
 
       const tableStorageCredential = new AzureNamedKeyCredential(_accountName, _accountKey);
       const blobStorageCredential = new StorageSharedKeyCredential(_accountName, _accountKey);
 
-      if (endpointSuffix) {
-        const storageAccountConnectionString = `DefaultEndpointsProtocol=https;AccountName=${_accountName};AccountKey=${_accountKey};BlobEndpoint=https://${endpointSuffix}/blob/${_accountName};QueueEndpoint=https://${endpointSuffix}/queue/${_accountName};TableEndpoint=https://${endpointSuffix}/table/${_accountName}`;
+      if (storageAccountConnectionString) {
         tableServiceClient = TableServiceClient.fromConnectionString(storageAccountConnectionString, {
           allowInsecureConnection: true,
           retryOptions: {
@@ -1116,7 +1115,7 @@ export class AzureStorage implements storage.Storage {
 
         return q.allSettled(removalPromises);
       })
-      .then(() => { });
+      .then(() => {});
   }
 
   private updateAppWithPermission(accountId: string, app: storage.App, updateCollaborator: boolean = false): q.Promise<void> {
@@ -1198,8 +1197,9 @@ export class AzureStorage implements storage.Storage {
       queryOptions: { filter: query },
     })) {
       if (entity.partitionKeyPointer && entity.partitionKeyPointer !== "" && entity.rowKeyPointer && entity.rowKeyPointer !== "") {
-        const childQuery = odata`PartitionKey eq ${entity.partitionKeyPointer} and (RowKey eq ${entity.rowKeyPointer
-          } or (RowKey gt ${childrenSearchKey} and RowKey lt ${childrenSearchKey + "~"}))`;
+        const childQuery = odata`PartitionKey eq ${entity.partitionKeyPointer} and (RowKey eq ${
+          entity.rowKeyPointer
+        } or (RowKey gt ${childrenSearchKey} and RowKey lt ${childrenSearchKey + "~"}))`;
 
         promises.push(this.getLeafEntities(childQuery, childrenSearchKey));
       } else {
@@ -1243,8 +1243,9 @@ export class AzureStorage implements storage.Storage {
     }
 
     // Fetch both the parent (for error-checking purposes) and the direct children
-    const query = odata`PartitionKey eq ${partitionKey} and (RowKey eq ${rowKey} or (RowKey gt ${childrenSearchKey} and RowKey lt ${childrenSearchKey + "~"
-      }))`;
+    const query = odata`PartitionKey eq ${partitionKey} and (RowKey eq ${rowKey} or (RowKey gt ${childrenSearchKey} and RowKey lt ${
+      childrenSearchKey + "~"
+    }))`;
 
     const entities: TableEntity[] = await this.getLeafEntities(query, childrenSearchKey);
 
