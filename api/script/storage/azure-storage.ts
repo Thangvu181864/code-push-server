@@ -873,13 +873,18 @@ export class AzureStorage implements storage.Storage {
       const tableStorageCredential = new AzureNamedKeyCredential(_accountName, _accountKey);
       const blobStorageCredential = new StorageSharedKeyCredential(_accountName, _accountKey);
 
-
-
       if (endpointSuffix) {
         const storageAccountConnectionString = `DefaultEndpointsProtocol=https;AccountName=${_accountName};AccountKey=${_accountKey};BlobEndpoint=https://${endpointSuffix}/blob/${_accountName};QueueEndpoint=https://${endpointSuffix}/queue/${_accountName};TableEndpoint=https://${endpointSuffix}/table/${_accountName}`;
         tableServiceClient = new TableServiceClient(storageAccountConnectionString, tableStorageCredential, {
           retryOptions: {
             maxRetries: 3,
+            maxRetryDelayInMs: 2000,
+            retryDelayInMs: 500,
+          },
+        });
+        blobServiceClient = new BlobServiceClient(storageAccountConnectionString, blobStorageCredential, {
+          retryOptions: {
+            maxTries: 4,
             maxRetryDelayInMs: 2000,
             retryDelayInMs: 500,
           },

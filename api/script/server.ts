@@ -36,4 +36,4 @@ defaultServer.start(function (err: Error, app: express.Express) {
   }
 
   server.setTimeout(0);
-},true);
+});

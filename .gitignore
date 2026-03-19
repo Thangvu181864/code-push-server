@@ -56,4 +56,4 @@ __queuestorage__
 .vscode/
 
 # Docker data
-./docker/data
+api/docker/data
