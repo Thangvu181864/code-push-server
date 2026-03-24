@@ -23,6 +23,18 @@ services:
       - ALLOW_EMPTY_PASSWORD=yes
     volumes:
       - redis-data:/data
+  # PostgreSQL (for database)
+  postgres:
+    image: postgres:12
+    container_name: postgres
+    environment:
+      - POSTGRES_USER=codepush
+      - POSTGRES_PASSWORD=codepush
+      - POSTGRES_DB=codepush
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
   # CodePush Server
   code-push-server:
     build: .
@@ -36,3 +48,4 @@ services:
 
 volumes:
   redis-data:
+  postgres-data:

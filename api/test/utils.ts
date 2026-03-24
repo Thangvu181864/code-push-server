@@ -169,6 +169,7 @@ export function retrieveStringContentsFromUrl(url: string): Promise<string> {
         });
       })
       .on("error", (error: any) => {
+        console.log("Error retrieving contents from url: " + error);
         resolve(null);
       });
   });

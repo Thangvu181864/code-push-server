@@ -15,6 +15,7 @@ import * as bodyParser from "body-parser";
 const domain = require("express-domain-middleware");
 import * as express from "express";
 import * as q from "q";
+import { SqlS3Storage } from "./storage/sql-s3-storage";
 
 interface Secret {
   id: string;
@@ -41,22 +42,23 @@ export function start(done: (err?: any, server?: express.Express, storage?: Stor
 
   q<void>(null)
     .then(async () => {
-      if (useJsonStorage) {
-        storage = new JsonStorage();
-      } else if (!process.env.AZURE_KEYVAULT_ACCOUNT) {
-        storage = new AzureStorage();
-      } else {
-        isKeyVaultConfigured = true;
-
-        const credential = new DefaultAzureCredential();
-
-        const vaultName = process.env.AZURE_KEYVAULT_ACCOUNT;
-        const url = `https://${vaultName}.vault.azure.net`;
-
-        const keyvaultClient = new SecretClient(url, credential);
-        const secret = await keyvaultClient.getSecret(`storage-${process.env.AZURE_STORAGE_ACCOUNT}`);
-        storage = new AzureStorage(process.env.AZURE_STORAGE_ACCOUNT, secret);
-      }
+      storage = new SqlS3Storage();
+      // if (useJsonStorage) {
+      //   storage = new JsonStorage();
+      // } else if (!process.env.AZURE_KEYVAULT_ACCOUNT) {
+      //   storage = new AzureStorage();
+      // } else {
+      //   isKeyVaultConfigured = true;
+      //
+      //   const credential = new DefaultAzureCredential();
+      //
+      //   const vaultName = process.env.AZURE_KEYVAULT_ACCOUNT;
+      //   const url = `https://${vaultName}.vault.azure.net`;
+      //
+      //   const keyvaultClient = new SecretClient(url, credential);
+      //   const secret = await keyvaultClient.getSecret(`storage-${process.env.AZURE_STORAGE_ACCOUNT}`);
+      //   storage = new AzureStorage(process.env.AZURE_STORAGE_ACCOUNT, secret);
+      // }
     })
     .then(() => {
       const app = express();
