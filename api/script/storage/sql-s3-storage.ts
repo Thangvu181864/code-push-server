@@ -28,7 +28,7 @@ export class SqlS3Storage implements storage.Storage {
         accessKeyId: process.env.S3_ACCESS_KEY!,
         secretAccessKey: process.env.S3_SECRET_KEY!,
       },
-      forcePathStyle: true, // process.env.S3_FORCE_PATH_STYLE === "true",
+      forcePathStyle: process.env.S3_FORCE_PATH_STYLE === "true",
     });
     this.pool = new Pool({
       max: 100, // max clients in the pool
