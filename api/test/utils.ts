@@ -23,7 +23,7 @@ export function generateKey(): string {
 }
 
 export function makeAccount(): storage.Account {
-  var account: storage.Account = {
+  const account: storage.Account = {
     createdTime: new Date().getTime(),
     name: "test account",
     email: "test_" + shortid.generate() + "@email.com",
@@ -33,9 +33,9 @@ export function makeAccount(): storage.Account {
 }
 
 export function makeStorageAccessKey(): storage.AccessKey {
-  var now: number = new Date().getTime();
-  var friendlyName: string = shortid.generate();
-  var accessKey: storage.AccessKey = {
+  const now: number = new Date().getTime();
+  const friendlyName: string = shortid.generate();
+  const accessKey: storage.AccessKey = {
     name: generateKey(),
     createdTime: now,
     createdBy: "test machine",
@@ -48,7 +48,7 @@ export function makeStorageAccessKey(): storage.AccessKey {
 }
 
 export function makeAccessKeyRequest(): restTypes.AccessKeyRequest {
-  var accessKeyRequest: restTypes.AccessKeyRequest = {
+  const accessKeyRequest: restTypes.AccessKeyRequest = {
     name: generateKey(),
     createdBy: "test machine",
     friendlyName: shortid.generate(),
@@ -59,7 +59,7 @@ export function makeAccessKeyRequest(): restTypes.AccessKeyRequest {
 }
 
 export function makeStorageApp(): storage.App {
-  var app: storage.App = {
+  const app: storage.App = {
     createdTime: new Date().getDate(),
     name: shortid.generate(),
   };
@@ -68,7 +68,7 @@ export function makeStorageApp(): storage.App {
 }
 
 export function makeRestApp(): restTypes.App {
-  var app: restTypes.App = {
+  const app: restTypes.App = {
     name: shortid.generate(),
     deployments: ["Production", "Staging"],
   };
@@ -77,7 +77,7 @@ export function makeRestApp(): restTypes.App {
 }
 
 export function makeStorageDeployment(): storage.Deployment {
-  var deployment: storage.Deployment = {
+  const deployment: storage.Deployment = {
     createdTime: new Date().getDate(),
     name: shortid.generate(),
     key: generateKey(),
@@ -87,7 +87,7 @@ export function makeStorageDeployment(): storage.Deployment {
 }
 
 export function makeRestDeployment(): restTypes.Deployment {
-  var deployment: restTypes.Deployment = {
+  const deployment: restTypes.Deployment = {
     name: shortid.generate(),
   };
 
@@ -95,7 +95,7 @@ export function makeRestDeployment(): restTypes.Deployment {
 }
 
 export function makePackage(version?: string, isMandatory?: boolean, packageHash?: string, label?: string): storage.Package {
-  var storagePackage: storage.Package = {
+  const storagePackage: storage.Package = {
     blobUrl: "testUrl.com",
     description: "test blob id",
     isDisabled: false,
@@ -113,14 +113,14 @@ export function makePackage(version?: string, isMandatory?: boolean, packageHash
 }
 
 export function makeStreamFromString(stringValue: string): stream.Readable {
-  var blobStream = new stream.Readable();
+  const blobStream = new stream.Readable();
   blobStream.push(stringValue);
   blobStream.push(null);
   return blobStream;
 }
 
 export function makeStringFromStream(stream: stream.Readable): Promise<string> {
-  var stringValue = "";
+  let stringValue = "";
   return Promise((resolve: (stringValue: string) => void) => {
     stream
       .on("data", (data: string) => {
@@ -140,37 +140,34 @@ export function getStreamAndSizeForFile(path: string): Promise<FileProps> {
         return;
       }
 
-      var readable: fs.ReadStream = fs.createReadStream(path);
+      const readable: fs.ReadStream = fs.createReadStream(path);
       resolve({ stream: readable, size: stats.size });
     });
   });
 }
 
 export function retrieveStringContentsFromUrl(url: string): Promise<string> {
-  var protocol: typeof http | typeof https = null;
-  if (url.indexOf("https://") === 0) {
-    protocol = https;
-  } else {
-    protocol = http;
-  }
+  return Promise((resolve, reject) => {
+    const protocol = url.startsWith("https://") ? https : http;
 
-  return Promise((resolve: (stringValue: string) => void) => {
-    const requestOptions: https.RequestOptions = {
-      path: url,
-    };
-    protocol
-      .get(requestOptions, (response: http.IncomingMessage) => {
-        if (response.statusCode !== 200) {
-          return null;
-        }
+    const request = protocol.get(new URL(url), (response: http.IncomingMessage) => {
+      const { statusCode } = response;
 
-        makeStringFromStream(response).then((contents: string) => {
-          resolve(contents);
-        });
-      })
-      .on("error", (error: any) => {
-        console.log("Error retrieving contents from url: " + error);
-        resolve(null);
+      if (statusCode < 200 || statusCode >= 300) {
+        return reject(new Error(`Failed to get URL ${url}, status code: ${statusCode}`));
+      }
+
+      let data = "";
+      response.on("data", (chunk) => {
+        data += chunk.toString();
       });
+      response.on("end", () => {
+        resolve(data);
+      });
+    });
+
+    request.on("error", (err) => {
+      reject(err);
+    });
   });
 }

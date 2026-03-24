@@ -19,22 +19,22 @@ export class SqlS3Storage implements storage.Storage {
   private readonly pool: Pool;
 
   constructor() {
-    this.bucketName = "code-push-server" // process.env.S3_BUCKET_NAME;
-    this.endpoint = "https://static-rustfs.thangvv.id.vn" // process.env.S3_ENDPOINT;
+    this.bucketName = process.env.S3_BUCKET_NAME;
+    this.endpoint = process.env.S3_ENDPOINT;
     this.s3Client = new S3Client({
-      endpoint: "https://static-rustfs.thangvv.id.vn", // process.env.S3_ENDPOINT,
-      region: "ap-southeast-1", // process.env.S3_REGION,
+      endpoint: process.env.S3_ENDPOINT,
+      region: process.env.S3_REGION,
       credentials: {
-        accessKeyId: "oEK4dTLsiQJqARB5VFGj", // process.env.S3_ACCESS_KEY!,
-        secretAccessKey: "nHE078vAgTUp4loNO3G15ZKsukfSb6JDCLIwjic9", // process.env.S3_SECRET_KEY!,
+        accessKeyId: process.env.S3_ACCESS_KEY!,
+        secretAccessKey: process.env.S3_SECRET_KEY!,
       },
-      forcePathStyle: true // process.env.S3_FORCE_PATH_STYLE === "true",
+      forcePathStyle: true, // process.env.S3_FORCE_PATH_STYLE === "true",
     });
     this.pool = new Pool({
       max: 100, // max clients in the pool
       idleTimeoutMillis: 30000, // 30 seconds
       connectionTimeoutMillis: 2000, // 2 seconds
-      connectionString: "postgresql://codepush:codepush@localhost:5433/codepush?schema=public", // process.env.DATABASE_URL,
+      connectionString: process.env.DATABASE_URL,
     });
 
     this.init()
@@ -171,7 +171,7 @@ export class SqlS3Storage implements storage.Storage {
   }
   addAccount(account: storage.Account): q.Promise<string> {
     account = storage.clone(account);
-    account.id = shortid()
+    account.id = shortid();
     account.createdTime = new Date().getTime();
 
     return q(this.pool.query("SELECT id FROM accounts WHERE email = $1", [account.email]))
@@ -362,9 +362,7 @@ export class SqlS3Storage implements storage.Storage {
     return q(this.getAccount(accountId))
       .then((account: storage.Account) => {
         if (!account) {
-          return q.reject(
-            storage.storageError(storage.ErrorCode.NotFound, "Account does not exist")
-          );
+          return q.reject(storage.storageError(storage.ErrorCode.NotFound, "Account does not exist"));
         }
 
         return q(
@@ -409,11 +407,11 @@ export class SqlS3Storage implements storage.Storage {
             }
             const mapCollaborator: { [appId: string]: storage.CollaboratorMap } = {};
             collaborator.rows.forEach((row: any) => {
-              if(!mapCollaborator[row.app_id]) {
+              if (!mapCollaborator[row.app_id]) {
                 mapCollaborator[row.app_id] = {};
               }
               mapCollaborator[row.app_id][row.email] = this.mapCollaboratorProperties(row);
-            })
+            });
 
             const apps: storage.App[] = app.rows.map((row: any) => {
               const app = this.mapApp(row);
@@ -688,7 +686,9 @@ export class SqlS3Storage implements storage.Storage {
       })
       .then((account: any) => {
         if (account.rows.length === 0) {
-          return q.reject(storage.storageError(storage.ErrorCode.NotFound, "The specified e-mail address doesn't represent a registered user"));
+          return q.reject(
+            storage.storageError(storage.ErrorCode.NotFound, "The specified e-mail address doesn't represent a registered user")
+          );
         }
 
         targetAccountId = account.rows[0].id;
@@ -910,7 +910,7 @@ export class SqlS3Storage implements storage.Storage {
         ),
       ])
       .then(([_, result]: any) => {
-        if (!result.rows) {
+        if (result.rows.length === 0) {
           return q.reject(storage.storageError(storage.ErrorCode.NotFound));
         }
 
@@ -1023,12 +1023,7 @@ export class SqlS3Storage implements storage.Storage {
         });
       });
   }
-  commitPackage(
-    accountId: string,
-    appId: string,
-    deploymentId: string,
-    updates: storage.Package
-  ): q.Promise<storage.Package> {
+  commitPackage(accountId: string, appId: string, deploymentId: string, updates: storage.Package): q.Promise<storage.Package> {
     updates = storage.clone(updates);
 
     if (!updates) {
@@ -1037,31 +1032,25 @@ export class SqlS3Storage implements storage.Storage {
 
     let newLabel: string;
 
-    return q
-      .all([
-        this.getAccount(accountId),
-        this.pool.query("SELECT id, account_id FROM apps WHERE id = $1", [appId]),
-        this.pool.query("SELECT id FROM deployments WHERE id = $1 AND app_id = $2", [
-          deploymentId,
-          appId,
-        ]),
-      ])
-      .then(([_, app, deployment]: any) => {
-        if (
-          app.rows.length === 0 ||
-          deployment.rows.length === 0 ||
-          app.rows[0].account_id !== accountId
-        ) {
-          return q.reject(storage.storageError(storage.ErrorCode.NotFound));
-        }
+    return (
+      q
+        .all([
+          this.getAccount(accountId),
+          this.pool.query("SELECT id, account_id FROM apps WHERE id = $1", [appId]),
+          this.pool.query("SELECT id FROM deployments WHERE id = $1 AND app_id = $2", [deploymentId, appId]),
+        ])
+        .then(([_, app, deployment]: any) => {
+          if (app.rows.length === 0 || deployment.rows.length === 0 || app.rows[0].account_id !== accountId) {
+            return q.reject(storage.storageError(storage.ErrorCode.NotFound));
+          }
 
-        return this.pool.query("BEGIN");
-      })
+          return this.pool.query("BEGIN");
+        })
 
-      // 🔒 LOCK packages của deployment để tránh race condition
-      .then(() => {
-        return this.pool.query(
-          `
+        // 🔒 LOCK packages của deployment để tránh race condition
+        .then(() => {
+          return this.pool.query(
+            `
         SELECT label
         FROM packages
         WHERE deployment_id = $1
@@ -1069,36 +1058,36 @@ export class SqlS3Storage implements storage.Storage {
         LIMIT 1
         FOR UPDATE
         `,
-          [deploymentId]
-        );
-      })
+            [deploymentId]
+          );
+        })
 
-      .then((pkg: any) => {
-        if (pkg.rows.length > 0) {
-          const lastLabel = pkg.rows[0].label; // vd: v5
-          const lastVersion = Number(lastLabel.replace("v", ""));
-          newLabel = "v" + (lastVersion + 1);
-        } else {
-          newLabel = "v1";
-        }
+        .then((pkg: any) => {
+          if (pkg.rows.length > 0) {
+            const lastLabel = pkg.rows[0].label; // vd: v5
+            const lastVersion = Number(lastLabel.replace("v", ""));
+            newLabel = "v" + (lastVersion + 1);
+          } else {
+            newLabel = "v1";
+          }
 
-        updates.label = newLabel;
-        updates.uploadTime = Date.now();
+          updates.label = newLabel;
+          updates.uploadTime = Date.now();
 
-        // disable rollout package trước đó
-        return this.pool.query(
-          `
+          // disable rollout package trước đó
+          return this.pool.query(
+            `
         UPDATE packages
         SET rollout = NULL
         WHERE deployment_id = $1
         `,
-          [deploymentId]
-        );
-      })
+            [deploymentId]
+          );
+        })
 
-      .then(() => {
-        return this.pool.query(
-          `
+        .then(() => {
+          return this.pool.query(
+            `
         INSERT INTO packages (
           id,
           deployment_id,
@@ -1123,38 +1112,39 @@ export class SqlS3Storage implements storage.Storage {
         )
         RETURNING *
         `,
-          [
-            shortid(),
-            deploymentId,
-            updates.appVersion,
-            updates.blobUrl,
-            updates.description,
-            updates.isDisabled ?? false,
-            updates.isMandatory ?? false,
-            updates.label,
-            updates.manifestBlobUrl ?? null,
-            updates.originalDeployment ?? null,
-            updates.originalLabel ?? null,
-            updates.packageHash,
-            updates.releasedBy ?? null,
-            updates.releaseMethod ?? storage.ReleaseMethod.Upload,
-            updates.rollout ?? null,
-            updates.size,
-            updates.uploadTime,
-          ]
-        );
-      })
+            [
+              shortid(),
+              deploymentId,
+              updates.appVersion,
+              updates.blobUrl,
+              updates.description,
+              updates.isDisabled ?? false,
+              updates.isMandatory ?? false,
+              updates.label,
+              updates.manifestBlobUrl ?? null,
+              updates.originalDeployment ?? null,
+              updates.originalLabel ?? null,
+              updates.packageHash,
+              updates.releasedBy ?? null,
+              updates.releaseMethod ?? storage.ReleaseMethod.Upload,
+              updates.rollout ?? null,
+              updates.size,
+              updates.uploadTime,
+            ]
+          );
+        })
 
-      .then(() => this.pool.query("COMMIT"))
+        .then(() => this.pool.query("COMMIT"))
 
-      .then(() => updates)
+        .then(() => updates)
 
-      .catch((err: any) => {
-        return this.pool
-          .query("ROLLBACK")
-          .catch(() => {}) // tránh crash nếu rollback fail
-          .then(() => q.reject(err));
-      });
+        .catch((err: any) => {
+          return this.pool
+            .query("ROLLBACK")
+            .catch(() => {}) // tránh crash nếu rollback fail
+            .then(() => q.reject(err));
+        })
+    );
   }
   clearPackageHistory(accountId: string, appId: string, deploymentId: string): q.Promise<void> {
     let deploymentExists = false;
@@ -1340,9 +1330,8 @@ export class SqlS3Storage implements storage.Storage {
       return q.reject(new Error("S3 client not initialized"));
     }
 
-
     const command = new PutObjectCommand({
-      Bucket:this.bucketName,
+      Bucket: this.bucketName,
       Key: blobId,
       Body: blobStream,
       ContentLength: streamLength,
@@ -1357,14 +1346,12 @@ export class SqlS3Storage implements storage.Storage {
       });
   }
   getBlobUrl(blobId: string): q.Promise<string> {
-
     const cleanEndpoint = this.endpoint.replace(/\/+$/, "");
 
     const blobUrl = `${cleanEndpoint}/${this.bucketName}/${blobId}`;
     return q(blobUrl);
   }
   removeBlob(blobId: string): q.Promise<void> {
-
     if (!this.s3Client) {
       return q.reject(new Error("S3 client not initialized"));
     }

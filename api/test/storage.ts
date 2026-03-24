@@ -1226,7 +1226,7 @@ function storageTests(StorageType: new (...args: any[]) => storageTypes.Storage,
           return utils.retrieveStringContentsFromUrl(blobUrl);
         })
         .then((actualContents: string) => {
-          assert.equal(fileContents, actualContents);
+          assert.equal(actualContents, fileContents);
         });
     });
 
