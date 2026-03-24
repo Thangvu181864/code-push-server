@@ -9,7 +9,7 @@ import {
   S3Client,
 } from "@aws-sdk/client-s3";
 import { Pool } from "pg";
-import { v4 as uuidv4 } from "uuid";
+import * as shortid from "shortid";
 import * as storage from "./storage";
 
 export class SqlS3Storage implements storage.Storage {
@@ -171,7 +171,7 @@ export class SqlS3Storage implements storage.Storage {
   }
   addAccount(account: storage.Account): q.Promise<string> {
     account = storage.clone(account);
-    account.id = uuidv4();
+    account.id = shortid()
     account.createdTime = new Date().getTime();
 
     return q(this.pool.query("SELECT id FROM accounts WHERE email = $1", [account.email]))
@@ -311,7 +311,7 @@ export class SqlS3Storage implements storage.Storage {
   }
   addApp(accountId: string, app: storage.App): q.Promise<storage.App> {
     app = storage.clone(app);
-    app.id = uuidv4();
+    app.id = shortid();
     app.createdTime = new Date().getTime();
 
     return this.getAccount(accountId)
@@ -802,7 +802,7 @@ export class SqlS3Storage implements storage.Storage {
   }
   addDeployment(accountId: string, appId: string, deployment: storage.Deployment): q.Promise<string> {
     deployment = storage.clone(deployment);
-    deployment.id = uuidv4();
+    deployment.id = shortid();
     deployment.createdTime = new Date().getTime();
 
     return q
@@ -1124,7 +1124,7 @@ export class SqlS3Storage implements storage.Storage {
         RETURNING *
         `,
           [
-            uuidv4(),
+            shortid(),
             deploymentId,
             updates.appVersion,
             updates.blobUrl,
@@ -1303,7 +1303,7 @@ export class SqlS3Storage implements storage.Storage {
           upload_time = EXCLUDED.upload_time
         `,
               [
-                uuidv4(),
+                shortid(),
                 deploymentId,
                 pkg.appVersion,
                 pkg.blobUrl,
@@ -1380,7 +1380,7 @@ export class SqlS3Storage implements storage.Storage {
   }
   addAccessKey(accountId: string, accessKey: storage.AccessKey): q.Promise<string> {
     accessKey = storage.clone(accessKey);
-    accessKey.id = uuidv4();
+    accessKey.id = shortid();
     accessKey.createdTime = new Date().getTime();
 
     return q(this.pool.query("SELECT id FROM accounts WHERE id = $1", [accountId]))
