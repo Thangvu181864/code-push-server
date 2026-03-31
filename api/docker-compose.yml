@@ -1,18 +1,4 @@
 services:
-  # Azurite (Azure Storage Emulator)
-  azurite:
-    image: mcr.microsoft.com/azure-storage/azurite
-    container_name: azurite
-    hostname: azurite
-    restart: always
-#    ports:
-#      - "10000:10000" # Blob service
-#      - "10001:10001" # Queue service
-#      - "10002:10002" # Table service
-    volumes:
-      - ./docker/data:/data
-    # Run azurite and allow outside access
-    command: "azurite --blobHost 0.0.0.0 --queueHost 0.0.0.0 --tableHost 0.0.0.0 --location /data"
   # Redis (for caching)
   redis:
     image: redis:latest
@@ -44,7 +30,8 @@ services:
     env_file:
       - .env
     depends_on:
-      - azurite
+      - redis
+      - postgres
 
 volumes:
   redis-data:

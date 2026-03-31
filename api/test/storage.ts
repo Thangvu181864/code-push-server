@@ -283,7 +283,7 @@ function storageTests(StorageType: new (...args: any[]) => storageTypes.Storage,
         })
         .then((updatedAccount: storageTypes.Account) => {
           assert.equal(updatedAccount.name, account.name);
-          assert.equal(updatedAccount.email, account.email);
+          assert.equal(updatedAccount.email, account.email.toLowerCase());
           assert.equal(updatedAccount.gitHubId, "2");
           assert(typeof updatedAccount.azureAdId === "undefined");
           assert(typeof updatedAccount.microsoftId === "undefined");
@@ -585,8 +585,8 @@ function storageTests(StorageType: new (...args: any[]) => storageTypes.Storage,
             return storage.getApps(account3.id);
           })
           .then((apps: storageTypes.App[]) => {
-            assert.equal("Owner", apps[0].collaborators[account2.email].permission);
-            assert.equal("Collaborator", apps[0].collaborators[account3.email].permission);
+            assert.equal("Owner", apps[0].collaborators[account2.email.toLowerCase()].permission);
+            assert.equal("Collaborator", apps[0].collaborators[account3.email.toLowerCase()].permission);
             assert.equal(1, apps.length);
             return storage.transferApp(account2.id, appToTransfer.id, account3.email);
           })
@@ -595,12 +595,12 @@ function storageTests(StorageType: new (...args: any[]) => storageTypes.Storage,
           })
           .then((apps: storageTypes.App[]) => {
             assert.equal(1, apps.length);
-            assert.equal("Owner", apps[0].collaborators[account3.email].permission);
+            assert.equal("Owner", apps[0].collaborators[account3.email.toLowerCase()].permission);
             return storage.getApps(account2.id);
           })
           .then((apps: storageTypes.App[]) => {
             assert.equal(1, apps.length);
-            assert.equal("Collaborator", apps[0].collaborators[account2.email].permission);
+            assert.equal("Collaborator", apps[0].collaborators[account2.email.toLowerCase()].permission);
           });
       });
 
@@ -620,9 +620,9 @@ function storageTests(StorageType: new (...args: any[]) => storageTypes.Storage,
           .then((apps: storageTypes.App[]) => {
             assert.equal(1, apps.length);
             assert.equal(3, Object.keys(apps[0].collaborators).length);
-            assert.equal("Owner", apps[0].collaborators[account2.email].permission);
-            assert.equal("Collaborator", apps[0].collaborators[account3.email].permission);
-            assert.equal("Collaborator", apps[0].collaborators[account.email].permission);
+            assert.equal("Owner", apps[0].collaborators[account2.email.toLowerCase()].permission);
+            assert.equal("Collaborator", apps[0].collaborators[account3.email.toLowerCase()].permission);
+            assert.equal("Collaborator", apps[0].collaborators[account.email.toLowerCase()].permission);
             return storage.transferApp(account2.id, appToTransfer.id, account3.email);
           })
           .then(() => {
@@ -631,9 +631,9 @@ function storageTests(StorageType: new (...args: any[]) => storageTypes.Storage,
           .then((apps: storageTypes.App[]) => {
             assert.equal(1, apps.length);
             assert.equal(3, Object.keys(apps[0].collaborators).length);
-            assert.equal("Collaborator", apps[0].collaborators[account2.email].permission);
-            assert.equal("Owner", apps[0].collaborators[account3.email].permission);
-            assert.equal("Collaborator", apps[0].collaborators[account.email].permission);
+            assert.equal("Collaborator", apps[0].collaborators[account2.email.toLowerCase()].permission);
+            assert.equal("Owner", apps[0].collaborators[account3.email.toLowerCase()].permission);
+            assert.equal("Collaborator", apps[0].collaborators[account.email.toLowerCase()].permission);
           });
       });
     });
@@ -716,8 +716,8 @@ function storageTests(StorageType: new (...args: any[]) => storageTypes.Storage,
           .then((collaboratorList: storageTypes.CollaboratorMap) => {
             const keys: string[] = Object.keys(collaboratorList);
             assert.equal(2, keys.length);
-            assert.equal(account2.email, keys[0]);
-            assert.equal(account3.email, keys[1]);
+            assert.equal(account2.email.toLowerCase(), keys[0]);
+            assert.equal(account3.email.toLowerCase(), keys[1]);
           });
       });
 
@@ -1162,7 +1162,7 @@ function storageTests(StorageType: new (...args: any[]) => storageTypes.Storage,
 
       it("can get package history", () => {
         return storage.getPackageHistory(account.id, app.id, deployment.id).then((actualPackageHistory: storageTypes.Package[]) => {
-          assert.equal(JSON.stringify(actualPackageHistory), JSON.stringify(expectedPackageHistory));
+          assert.deepStrictEqual(actualPackageHistory, expectedPackageHistory);
         });
       });
 
@@ -1170,7 +1170,7 @@ function storageTests(StorageType: new (...args: any[]) => storageTypes.Storage,
         return storage
           .getPackageHistory(account.id, app.id, deployment.id)
           .then((actualPackageHistory: storageTypes.Package[]) => {
-            assert.equal(JSON.stringify(actualPackageHistory), JSON.stringify(expectedPackageHistory));
+            assert.deepStrictEqual(actualPackageHistory, expectedPackageHistory);
             expectedPackageHistory[0].description = "new description for v1";
             expectedPackageHistory[1].isMandatory = true;
             expectedPackageHistory[2].description = "new description for v3";

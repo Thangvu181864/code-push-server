@@ -52,7 +52,7 @@ export class SqlS3Storage implements storage.Storage {
     CREATE TABLE IF NOT EXISTS accounts (
       id VARCHAR PRIMARY KEY,
       email TEXT NOT NULL,
-      name TEXT NOT NULL,
+      name TEXT,
       azure_ad_id TEXT,
       github_id TEXT,
       microsoft_id TEXT,
@@ -174,7 +174,7 @@ export class SqlS3Storage implements storage.Storage {
     account.id = shortid();
     account.createdTime = new Date().getTime();
 
-    return q(this.pool.query("SELECT id FROM accounts WHERE email = $1", [account.email]))
+    return q(this.pool.query("SELECT id FROM accounts WHERE email = $1", [account.email.toLowerCase()]))
       .then((existing: any) => {
         if (existing.rows.length > 0) {
           return q.reject(storage.storageError(storage.ErrorCode.AlreadyExists));
@@ -194,7 +194,15 @@ export class SqlS3Storage implements storage.Storage {
         )
         VALUES ($1, $2, $3, $4, $5, $6, $7)
         `,
-            [account.id, account.email, account.name, account.azureAdId, account.gitHubId, account.microsoftId, account.createdTime]
+            [
+              account.id,
+              account.email.toLowerCase(),
+              account.name,
+              account.azureAdId,
+              account.gitHubId,
+              account.microsoftId,
+              account.createdTime,
+            ]
           )
         );
       })
@@ -222,7 +230,7 @@ export class SqlS3Storage implements storage.Storage {
       });
   }
   getAccountByEmail(email: string): q.Promise<storage.Account> {
-    return q(this.pool.query("SELECT * FROM accounts WHERE email = $1", [email]))
+    return q(this.pool.query("SELECT * FROM accounts WHERE email = $1", [email.toLowerCase()]))
       .then((result: any) => {
         if (result.rows.length === 0) {
           return q.reject(storage.storageError(storage.ErrorCode.NotFound));
@@ -258,7 +266,7 @@ export class SqlS3Storage implements storage.Storage {
       throw new Error("No account email");
     }
 
-    return this.getAccountByEmail(email)
+    return this.getAccountByEmail(email.toLowerCase())
       .then((account: storage.Account) => {
         const fields: string[] = [];
         const values: any[] = [];
@@ -271,7 +279,7 @@ export class SqlS3Storage implements storage.Storage {
 
         if (updates.email !== undefined) {
           fields.push(`email = $${index++}`);
-          values.push(updates.email);
+          values.push(updates.email.toLowerCase());
         }
 
         if (updates.azureAdId !== undefined) {
@@ -335,7 +343,7 @@ export class SqlS3Storage implements storage.Storage {
             INSERT INTO collaborators (app_id, account_id, email, permission)
             VALUES ($1, $2, $3, $4)
             `,
-                [app.id, accountId, account.email, storage.Permissions.Owner]
+                [app.id, accountId, account.email.toLowerCase(), storage.Permissions.Owner]
               )
             );
           })
@@ -344,7 +352,7 @@ export class SqlS3Storage implements storage.Storage {
           })
           .then(() => {
             app.collaborators = {
-              [account.email]: {
+              [account.email.toLowerCase()]: {
                 accountId: accountId,
                 permission: storage.Permissions.Owner,
               },
@@ -410,7 +418,7 @@ export class SqlS3Storage implements storage.Storage {
               if (!mapCollaborator[row.app_id]) {
                 mapCollaborator[row.app_id] = {};
               }
-              mapCollaborator[row.app_id][row.email] = this.mapCollaboratorProperties(row);
+              mapCollaborator[row.app_id][row.email.toLowerCase()] = this.mapCollaboratorProperties(row);
             });
 
             const apps: storage.App[] = app.rows.map((row: any) => {
@@ -493,7 +501,7 @@ export class SqlS3Storage implements storage.Storage {
       });
   }
   transferApp(accountId: string, appId: string, email: string): q.Promise<void> {
-    if (storage.isPrototypePollutionKey(email)) {
+    if (storage.isPrototypePollutionKey(email.toLowerCase())) {
       return q.reject(storage.storageError(storage.ErrorCode.Invalid, "Invalid email parameter"));
     }
 
@@ -505,9 +513,9 @@ export class SqlS3Storage implements storage.Storage {
       .then((_) => {
         return this.getAccount(accountId)
           .then((account: storage.Account) => {
-            requesterEmail = account.email;
+            requesterEmail = account.email.toLowerCase();
 
-            return q(this.pool.query("SELECT id, email FROM accounts WHERE email = $1", [email]));
+            return q(this.pool.query("SELECT id, email FROM accounts WHERE email = $1", [email.toLowerCase()]));
           })
           .then((account: any) => {
             if (account.rows.length === 0) {
@@ -517,7 +525,7 @@ export class SqlS3Storage implements storage.Storage {
             }
 
             targetAccountId = account.rows[0].id;
-            targetEmail = account.rows[0].email;
+            targetEmail = account.rows[0].email.toLowerCase();
 
             return q(
               this.pool.query(
@@ -525,7 +533,7 @@ export class SqlS3Storage implements storage.Storage {
             SELECT permission FROM collaborators
             WHERE app_id = $1 AND email = $2
             `,
-                [appId, targetEmail]
+                [appId, targetEmail.toLowerCase()]
               )
             );
           })
@@ -544,7 +552,7 @@ export class SqlS3Storage implements storage.Storage {
             SET permission = $1
             WHERE app_id = $2 AND email = $3
             `,
-                [storage.Permissions.Collaborator, appId, requesterEmail]
+                [storage.Permissions.Collaborator, appId, requesterEmail.toLowerCase()]
               )
             );
           })
@@ -555,7 +563,7 @@ export class SqlS3Storage implements storage.Storage {
             SELECT * FROM collaborators
             WHERE app_id = $1 AND email = $2
             `,
-                [appId, targetEmail]
+                [appId, targetEmail.toLowerCase()]
               )
             );
           })
@@ -568,7 +576,7 @@ export class SqlS3Storage implements storage.Storage {
               SET permission = $1
               WHERE app_id = $2 AND email = $3
               `,
-                  [storage.Permissions.Owner, appId, targetEmail]
+                  [storage.Permissions.Owner, appId, targetEmail.toLowerCase()]
                 )
               );
             } else {
@@ -578,7 +586,7 @@ export class SqlS3Storage implements storage.Storage {
               INSERT INTO collaborators (app_id, account_id, email, permission)
               VALUES ($1, $2, $3, $4)
               `,
-                  [appId, targetAccountId, targetEmail, storage.Permissions.Owner]
+                  [appId, targetAccountId, targetEmail.toLowerCase(), storage.Permissions.Owner]
                 )
               );
             }
@@ -642,7 +650,7 @@ export class SqlS3Storage implements storage.Storage {
 
         if (updates.collaborators) {
           Object.keys(updates.collaborators).forEach((email) => {
-            const c = updates.collaborators[email];
+            const c = updates.collaborators[email.toLowerCase()];
 
             queries.push(
               q(
@@ -655,7 +663,7 @@ export class SqlS3Storage implements storage.Storage {
                 account_id = EXCLUDED.account_id,
                 permission = EXCLUDED.permission
               `,
-                  [updates.id, c.accountId, email, c.permission]
+                  [updates.id, c.accountId, email.toLowerCase(), c.permission]
                 )
               )
             );
@@ -673,7 +681,7 @@ export class SqlS3Storage implements storage.Storage {
       });
   }
   addCollaborator(accountId: string, appId: string, email: string): q.Promise<void> {
-    if (storage.isPrototypePollutionKey(email)) {
+    if (storage.isPrototypePollutionKey(email.toLowerCase())) {
       return q.reject(storage.storageError(storage.ErrorCode.Invalid, "Invalid email parameter"));
     }
 
@@ -682,7 +690,7 @@ export class SqlS3Storage implements storage.Storage {
 
     return this.getApp(accountId, appId)
       .then(() => {
-        return q(this.pool.query("SELECT id, email FROM accounts WHERE email = $1", [email]));
+        return q(this.pool.query("SELECT id, email FROM accounts WHERE email = $1", [email.toLowerCase()]));
       })
       .then((account: any) => {
         if (account.rows.length === 0) {
@@ -692,7 +700,7 @@ export class SqlS3Storage implements storage.Storage {
         }
 
         targetAccountId = account.rows[0].id;
-        targetEmail = account.rows[0].email;
+        targetEmail = account.rows[0].email.toLowerCase();
 
         return q(
           this.pool.query(
@@ -700,7 +708,7 @@ export class SqlS3Storage implements storage.Storage {
         SELECT permission FROM collaborators
         WHERE app_id = $1 AND email = $2
         `,
-            [appId, targetEmail]
+            [appId, targetEmail.toLowerCase()]
           )
         );
       })
@@ -752,17 +760,17 @@ export class SqlS3Storage implements storage.Storage {
 
     return this.getApp(accountId, appId)
       .then((app: storage.App) => {
-        if (this.isOwner(app.collaborators, email)) {
+        if (this.isOwner(app.collaborators, email.toLowerCase())) {
           return q.reject(storage.storageError(storage.ErrorCode.AlreadyExists));
         }
 
-        return q(this.pool.query("SELECT id, email FROM accounts WHERE email = $1", [email]))
+        return q(this.pool.query("SELECT id, email FROM accounts WHERE email = $1", [email.toLowerCase()]))
           .then((account: any) => {
             if (account.rows.length === 0) {
               return q.reject(storage.storageError(storage.ErrorCode.NotFound));
             }
 
-            targetEmail = account.rows[0].email;
+            targetEmail = account.rows[0].email.toLowerCase();
 
             return q(
               this.pool.query(
@@ -770,7 +778,7 @@ export class SqlS3Storage implements storage.Storage {
             SELECT 1 FROM collaborators
             WHERE app_id = $1 AND email = $2
             `,
-                [appId, targetEmail]
+                [appId, targetEmail.toLowerCase()]
               )
             );
           })
@@ -788,7 +796,7 @@ export class SqlS3Storage implements storage.Storage {
             DELETE FROM collaborators
             WHERE app_id = $1 AND email = $2
             `,
-                [appId, targetEmail]
+                [appId, targetEmail.toLowerCase()]
               )
             );
           })
@@ -1564,9 +1572,9 @@ export class SqlS3Storage implements storage.Storage {
       id: row.id,
       email: row.email,
       name: row.name,
-      azureAdId: row.azure_ad_id,
-      gitHubId: row.github_id,
-      microsoftId: row.microsoft_id,
+      azureAdId: row.azure_ad_id ?? undefined,
+      gitHubId: row.github_id ?? undefined,
+      microsoftId: row.microsoft_id ?? undefined,
       createdTime: Number(row.created_time),
     };
   }
