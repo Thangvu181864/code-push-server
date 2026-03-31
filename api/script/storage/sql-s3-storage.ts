@@ -1208,7 +1208,7 @@ export class SqlS3Storage implements storage.Storage {
             SELECT *
             FROM packages
             WHERE deployment_id = $1
-            ORDER BY upload_time DESC
+            ORDER BY upload_time ASC
           `,
             [deploymentId]
           )
